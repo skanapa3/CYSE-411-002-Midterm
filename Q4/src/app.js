@@ -10,7 +10,7 @@ function loadSession() {
         const session = JSON.parse(raw);
         if (
             session &&
-            typeof session.userId === "string" && session.userId.trim() !== "" &&
+            typeof session  .userId === "string" && session.userId.trim() !== "" &&
             typeof session.role === "string" && session.role.trim() !== "" &&
             typeof session.displayName === "string" && session.displayName.trim() !== ""
         ) {
