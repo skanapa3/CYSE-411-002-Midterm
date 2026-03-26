@@ -21,11 +21,27 @@ let currentFilter = "all";
 
 
 function loadDashboardState() {
-    const raw   = localStorage.getItem("dashboardState");
-    const state = JSON.parse(raw);             // No try/catch
-    currentFilter = state.filter;              // No enum validation
+    let state = { filter: "all" };
+
+    try{
+        const raw = localStorage.getItem("dashboardState");
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && ACCEPTED_FILTERS.includes(parsed.filter)){
+                state.filter = parsed.filter;
+            } else {
+                console.warn("Invalid stored filter. defaulting to 'all'.");
+
+            }
+        }
+    } catch (err) {
+    console.error("Failed to parse dashboard state from localStorage:", err);
+    }
+
+    currentFilter = state.filter;
     applyFilter(currentFilter);
 }
+
 
 
 //  Q5.C  Dashboard State – Save
@@ -37,10 +53,17 @@ function loadDashboardState() {
 
 function saveDashboardState() {
     const filterInput = document.getElementById("filter-select");
-    const filter      = filterInput.value;    // Not validated before storing
-    localStorage.setItem("dashboardState", JSON.stringify({ filter: filter }));
-    currentFilter = filter;
+    const filter = filterInput.value;
+
+    if (ACCEPTED_FILTERS.includes(filter)) {
+        localStorage.setItem("dashboardState", JSON.stringify({ filter }));
+        currentFilter = filter;
+    } else {
+        console.warn("Attempted to save invalid filter to localStorage, ignored:", filter);
+        currentFilter = "all";
+    }
 }
+
 
 
 
@@ -55,9 +78,19 @@ function saveDashboardState() {
 
 
 async function fetchIncidents() {
-    const res  = fetch("/api/incidents");      // Missing await
-    const data = res.json();                   // Missing await; res is a Promise
-    return data;
+    try {
+        const res = await fetch("/api/incidents");
+
+        if (!res.ok) {
+            throw new Error("HTTP error: " + res.status);
+        }
+
+        const data = await res.json();
+        return data;
+    } catch (err) {
+        console.error("Failed to fetch incidents:", err);
+        return [];
+    }
 }
 
 
@@ -73,15 +106,41 @@ async function fetchIncidents() {
 
 function renderIncidents(incidents) {
     const container = document.getElementById("incident-list");
-    container.innerHTML = "";                  // Clear previous results
+    container.innerHTML = ""; 
 
-    incidents.forEach(function (incident) {
+    if (!Array.isArray(incidents)) {
+        const errorItem = document.createElement("li");
+        errorItem.textContent = "Error: Invalid incident data received.";
+        container.appendChild(errorItem);
+        console.error("renderIncidents() received non-array input:", incidents);
+        return;
+    }
+
+    incidents.forEach(incident => {
+        if (
+            !incident ||
+            typeof incident.title !== "string" ||
+            incident.title.trim() === "" ||
+
+            !ACCEPTED_SEVERITIES.includes(incident.severity)
+        ) {
+            console.warn("Skipping invalid incident:", incident);
+            return;
+        }
         const item = document.createElement("li");
-        // UNSAFE – directly inserts API response as HTML
-        item.innerHTML =
-            "<strong>" + incident.title + "</strong>" +
-            " <span class='severity severity-" + incident.severity + "'>" +
-            incident.severity + "</span>";
+        const titleEl = document.createElement("strong");
+
+        titleEl.textContent = incident.title;
+
+        const severityEl = document.createElement("span");
+
+        severityEl.textContent = incident.severity;
+
+        severityEl.classList.add("severity", `severity-${incident.severity}`);
+
+        item.appendChild(titleEl);
+        item.appendChild(severityEl);
+
         container.appendChild(item);
     });
 }
