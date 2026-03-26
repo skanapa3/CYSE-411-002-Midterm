@@ -5,10 +5,21 @@
 
 function loadSession() {
     const raw = sessionStorage.getItem("session");
-    const session = JSON.parse(raw);          // No try/catch
-    return session;                            // No field validation
+    const session = JSON.parse(raw); 
+    try {
+        const session = JSON.parse(raw);
+        if (
+            session &&
+            typeof session.userId === "string" && session.userId.trim() !== "" &&
+            typeof session.role === "string" && session.role.trim() !== "" &&
+            typeof session.displayName === "string" && session.displayName.trim() !== ""
+        ) {
+            return session;
+        }
+    } catch (e) {         // No try/catch
+    return null;                            // No field validation
+    }
 }
-
 
 //  Q4.A  Status Message Rendering
 //  Displays an employee's status message on their profile card.
@@ -18,9 +29,12 @@ function loadSession() {
 
 
 function renderStatusMessage(containerElement, message) {
-    containerElement.innerHTML = "<p>" + message + "</p>";   // UNSAFE
-}
+    containerElement.innerHTML = "";   // UNSAFE
+    const p = document.createElement("p");
+    p.textContent = message;   
 
+    containerElement.appendChild(p); 
+}
 
 
 //  Q4.B  Search Query Sanitization
@@ -36,13 +50,30 @@ function sanitizeSearchQuery(input) {
     //   - Trim leading/trailing whitespace before processing
     //   - Max 40 characters
     //   - Return null if the result is empty after sanitization
-    return input;   // UNSAFE – returns raw input unchanged
+    if (!input) return null;
+    let sanitized = input.trim();
+    sanitized = sanitized.substring(0, 40);
+    sanitized = sanitized.replace(/[^a-zA-Z0-9 _-]/g, "");
+    if (sanitized.length === 0) {
+        return null;
+    }
+    return sanitized;
 }
+
+  // UNSAFE – returns raw input unchanged
+
 
 function performSearch(query) {
     const sanitized = sanitizeSearchQuery(query);
     const label = document.getElementById("search-label");
-    label.innerHTML = "Showing results for: " + sanitized;  // UNSAFE
+
+    label.textContent = "";
+    if (sanitized === null) {
+        label.textContent = "Invalid search query.";
+        return;
+    }
+
+    label.textContent = "Showing results for: " + sanitized;
 }
 
 
